@@ -1,0 +1,9 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  generateName: k8s-executor
+  labels:
+    app: nextflow
+data:
+  k8s.config: |
+    process.executor='k8s'

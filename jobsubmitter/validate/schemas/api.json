@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IGS4EU trigger pgsc_calc",
+  "type": "object",
+  "properties": {
+    "nxf_params_file": {
+      "$ref": "https://raw.githubusercontent.com/pgscatalog/pgsc_calc/dev/assets/schemas/nxf_params.json"
+    },
+    "target_genomes": {
+      "$ref": "https://raw.githubusercontent.com/pgscatalog/pgsc_calc/dev/assets/schemas/target_genomes.json"
+    },
+    "nxf_work": {
+      "type": "string",
+      "description": "A path to the nextflow working directory in the ReadWriteMany Persistent Volume Claim shared by the driver and worker pods. Must be a unique path in the PVC not shared by other workflow instances, or weird things will happen."
+    },
+    "id": {
+      "type": "string",
+      "description": "An identifier assigned to the launched workflow instance. It should be universally unique to monitor the status of the launched workflow."
+    }
+  },
+  "required": [
+    "target_genomes",
+    "nxf_params_file",
+    "nxf_work",
+    "id"
+  ]
+}

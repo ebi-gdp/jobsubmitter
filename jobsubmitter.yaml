@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobsubmitter-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jobsubmitter
+  template:
+    metadata:
+      labels:
+        app: jobsubmitter
+    spec:
+      serviceAccountName: jobsubmitter      
+      containers:
+        - name: js
+          image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter
+          imagePullPolicy: Always
+          args: 
+            - |
+              /app/.venv/bin/python jobsubmitter.py --kafka_bootstrap_urls my-cluster-kafka-bootstrap.kafka-dev.svc.cluster.local:9092 --client_id $POD_NAME --namespace $POD_NAMESPACE            
+          command:
+            - sh
+            - -c
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+
+
+
+
