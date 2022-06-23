@@ -6,7 +6,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from jobsubmitter.validate.message import validate_message
 from jobsubmitter.validate.schema import create_validator
 
-logging.getLogger('kafka').setLevel(logging.WARNING) # kafka is so loud
+logging.getLogger('kafka').setLevel(logging.WARNING)  # kafka is so loud
 logger = logging.getLogger(__name__)
 
 
@@ -36,5 +36,5 @@ def read_message(m: bytes, validator: jsonschema.Draft202012Validator) -> dict:
         logger.debug("Valid JSON decoded")
         return validate_message(message, validator)
     except (json.decoder.JSONDecodeError, UnicodeDecodeError):
-        logger.warning("Invalid JSON, skipping message", exc_info=True)
+        logger.error("Invalid JSON", exc_info=True)
         return json.loads('{}')

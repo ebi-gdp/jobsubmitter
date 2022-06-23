@@ -1,11 +1,14 @@
 import logging
 import argparse
+from kubernetes import config
 from jobsubmitter.consume import create_consumer
-
-from jobsubmitter.job.provision import make_job_instance
+from jobsubmitter.job.provision import make_shared_cm, submit_job
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+log_fmt = "%(name)s: %(asctime)s %(levelname)-8s %(message)s"
+logging.basicConfig(level=logging.DEBUG,
+                    format=log_fmt,
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 
 def parse_args(args=None) -> argparse.Namespace:
@@ -22,20 +25,21 @@ def main(args=None):
     logger.debug(args)
     bootstrap_list = args.kafka_bootstrap_urls.strip().split(",")
 
+    config.load_incluster_config()
+    make_shared_cm(args.namespace)  # ensure the shared configmap is provisioned at startup
+
     consumer = create_consumer(args.client_id, bootstrap_list)
 
     for message in consumer:
         params = message.value
 
-        if params == {}:
-            continue  # messages that fail validation are returned empty
+        if params == {}:  # messages that fail validation are returned empty
+            logging.error(message)
+            continue
+        else:
+            logging.debug(message)
 
-        logger.debug(params)
-        job = make_job_instance(params=params,
-                                client_id=args.client_id,
-                                ns=args.namespace)
-
-        job.createNamespacedJob(args.namespace)
+        submit_job(params, args.client_id, args.namespace)
 
 
 if __name__ == '__main__':
