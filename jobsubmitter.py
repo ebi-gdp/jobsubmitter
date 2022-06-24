@@ -2,7 +2,8 @@ import logging
 import argparse
 from kubernetes import config
 from jobsubmitter.consume import create_consumer
-from jobsubmitter.job.provision import make_shared_cm, submit_job
+from jobsubmitter.job.job import submit_job
+from jobsubmitter.job.config import make_shared_cm
 
 logger = logging.getLogger(__name__)
 log_fmt = "%(name)s: %(asctime)s %(levelname)-8s %(message)s"

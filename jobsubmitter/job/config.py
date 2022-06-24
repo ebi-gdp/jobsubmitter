@@ -1,19 +1,30 @@
-"""This module loads and configures the K8S objects necessary for a pgsc_calc instance to run.
-
-Some K8S objects are static and loaded from local manifests (job/manifests/).
-
-Some K8S objects (e.g. configMap volume) must be loaded from local manifests and then configured with JSON data.
-"""
-
-from ruamel.yaml import YAML
 import importlib.resources
 import logging
-from kubernetes import client
+
 from hikaru.model.rel_1_21 import *
-from . import manifests
+from kubernetes import client
+from ruamel.yaml import YAML
+
+from jobsubmitter.job import manifests
+from jobsubmitter.job.nextflowconfigfile import NextflowConfigFile
 
 logging.getLogger('kubernetes').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
+
+def make_executor_cm(params) -> ConfigMap:
+    """ Overwrite parts of base executor config file with message parameters """
+    k8s_config: str = base_executor().data['k8s.config']
+    configfile: NextflowConfigFile = NextflowConfigFile(k8s_config)
+    # TODO: .to_dict() -> merge keys -> .from_dict()
+    return ConfigMap()
+
+
+def base_executor() -> ConfigMap:
+    """ Load the base ConfigMap that describes nextflow k8s execution parameters"""
+    yaml: YAML = YAML()
+    base_executor: str = importlib.resources.read_text(manifests, 'k8s-executor.yaml')
+    return ConfigMap.from_yaml(yaml.load(base_executor))
 
 
 def base_configmap() -> ConfigMap:
@@ -21,13 +32,6 @@ def base_configmap() -> ConfigMap:
     yaml: YAML = YAML()
     base_cm: str = importlib.resources.read_text(manifests, 'nxf-base.yaml')
     return ConfigMap.from_yaml(yaml.load(base_cm))
-
-
-def base_job() -> Job:
-    """ Load a base job object from a K8S Job manifest """
-    yaml: YAML = YAML()
-    nxf_driver: str = importlib.resources.read_text(manifests, 'pgsc-job.yaml')
-    return Job.from_yaml(yaml.load(nxf_driver))
 
 
 def make_cm_vol(params: dict[str, str],  # TODO: fix this type hint
@@ -39,14 +43,19 @@ def make_cm_vol(params: dict[str, str],  # TODO: fix this type hint
     file_dict: dict[str, str] = {'input.json': str(params['target_genomes']),
                                  'params.json': str(params['nxf_params_file'])}
     meta = make_cm_meta(client_id, params, ns)
-    cm = ConfigMap(data=file_dict, metadata=meta, immutable=True)
+    cm = ConfigMap(data=file_dict, metadata=meta, immutable=False)
     result: Response = cm.createNamespacedConfigMap(namespace=ns)
     cm.metadata.name=result.obj.metadata.name # update name metadata with generated name
+
+    logger.debug("Merging k8s execution configuration...")
+    cm.merge(base_executor())
+    logger.debug(cm)
+    # TODO: now set CM to immutable
     return cm, Volume(name='config', configMap=ConfigMapVolumeSource(name=result.obj.metadata.name))
 
 
 def make_cm_meta(client_id: str, params: dict[str, str], ns: str) -> ObjectMeta:
-    """ Set up the metadata for a ConfigMap """
+    """ Create a metadata object for the ConfigMap """
     labels: dict = {'app': 'nextflow',
                     'submitter': client_id,
                     'run-id': params['id'],
@@ -58,7 +67,9 @@ def make_cm_meta(client_id: str, params: dict[str, str], ns: str) -> ObjectMeta:
 
 
 def adopt_configmap(job: Job, cm: ConfigMap) -> None:
-    """ Make job instance parent of configmap to simplify garbage collection """
+    """ Set the parent of the ConfigMap to the job instance that requires it.
+
+     This simplifies k8s garbage collection."""
 
     ow: OwnerReference = OwnerReference(apiVersion=job.apiVersion,
                                         kind="Job",
@@ -71,34 +82,9 @@ def adopt_configmap(job: Job, cm: ConfigMap) -> None:
 
 
 def make_shared_cm(ns: str) -> None:
-    """ Ensure the shared ConfigMap is provisioned """
+    """ Ensure the shared ConfigMap is provisioned in the namespace"""
     base_cm: ConfigMap = base_configmap()
     try:
         base_cm.read(namespace=ns)
     except client.exceptions.ApiException:
         base_cm.create(namespace=ns)
-
-
-def make_job_instance(params: dict, client_id: str, ns: str) -> tuple[ConfigMap, Job]:
-    """ Provision a job instance with parameters from Kafka """
-    nxf_job: Job = base_job()
-    cm: ConfigMap
-    cm_vol: Volume
-    cm, cm_vol = make_cm_vol(params, client_id, ns)
-    volumes = nxf_job.spec.template.spec.volumes
-    volumes[1] = cm_vol
-
-    return cm, nxf_job
-
-
-def submit_job(params, client_id, ns) -> None:
-    """ Create the Job object and set the ConfigMap parent """
-    cm: ConfigMap
-    job: Job
-    cm, job = make_job_instance(params, client_id, ns)
-    logger.debug("Submitting job to K8S")
-    job.create(namespace=ns)
-    logger.debug(job)
-    adopt_configmap(job, cm)
-
-    # TODO: update configmap

@@ -12,9 +12,10 @@ spec:
   ttlSecondsAfterFinished: 60
   template:
     spec:
+      serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run hello
+            - nextflow run /workspace/hello -c /config/k8s.config
           command:
             - /bin/sh
             - '-c'
@@ -62,8 +63,9 @@ spec:
               readOnly: false
             - name: config
               mountPath: "/config"
-              readOnly: true              
+              readOnly: true
       restartPolicy: Never
+      backoffLimit: 1
       volumes:
         - name: vol-1
           persistentVolumeClaim:
