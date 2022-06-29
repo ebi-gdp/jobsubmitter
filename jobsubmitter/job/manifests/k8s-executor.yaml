@@ -9,6 +9,5 @@ data:
     process.executor='local'
     k8s.namespace='intervene-dev'
     k8s.serviceAccount='nextflow-job'
-    k8s.storageClaimName='ssdnfsclaim'
     k8s.storageMountPath='/workspace'
 

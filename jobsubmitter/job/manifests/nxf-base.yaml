@@ -10,3 +10,4 @@ data:
   nxf_opts: -Xms500M -Xmx3500M
   nxf_offline: "" 
   nxf_params_file: /config/params.json
+  nxf_work: /workspace/work

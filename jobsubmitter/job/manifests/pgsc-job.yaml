@@ -9,13 +9,14 @@ metadata:
     run-id: nxf-unique-run-id 
     version: dev 
 spec:
-  ttlSecondsAfterFinished: 60
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 1
   template:
     spec:
       serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run /workspace/hello -c /config/k8s.config
+            - nextflow run hello -c /config/k8s.config
           command:
             - /bin/sh
             - '-c'
@@ -48,6 +49,11 @@ spec:
                 configMapKeyRef:
                   name: nxf-base
                   key: nxf_opts
+            - name: NXF_WORK
+              valueFrom:
+                configMapKeyRef:
+                  name: nxf-base
+                  key: nxf_work
           image: 'docker.io/nextflow/nextflow:21.10.6'
           name: nextflow
           resources:
@@ -65,7 +71,6 @@ spec:
               mountPath: "/config"
               readOnly: true
       restartPolicy: Never
-      backoffLimit: 1
       volumes:
         - name: vol-1
           persistentVolumeClaim:

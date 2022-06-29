@@ -20,7 +20,7 @@ def create_consumer(client_id: str, bs_servers: list[str],
                          client_id=client_id,
                          group_id=group,
                          bootstrap_servers=bs_servers,
-                         value_deserializer=lambda m: read_message(m, validator),
+                         value_deserializer=lambda m: _read_message(m, validator),
                          enable_auto_commit=True)
 
 
@@ -29,7 +29,7 @@ def create_producer() -> KafkaProducer:
     return KafkaProducer(value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 
-def read_message(m: bytes, validator: jsonschema.Draft202012Validator) -> dict:
+def _read_message(m: bytes, validator: jsonschema.Draft202012Validator) -> dict:
     """ Decode and validate the JSON content of a message """
     try:
         message = json.loads(m.decode('ascii'))

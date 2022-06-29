@@ -17,7 +17,7 @@ def parse_args(args=None) -> argparse.Namespace:
     parser.add_argument("--kafka_bootstrap_urls", help="Path to kafka bootstrap server",required=True)
     parser.add_argument("--client_id", help="Unique identifier of this client",required=True)
     parser.add_argument("--namespace", help="Namespace of provisioned jobs", required=True)
-
+    parser.add_argument("--local_config", help="Use local KUBECONFIG", action='store_true')
     return parser.parse_args(args)
 
 
@@ -26,7 +26,11 @@ def main(args=None):
     logger.debug(args)
     bootstrap_list = args.kafka_bootstrap_urls.strip().split(",")
 
-    config.load_incluster_config()
+    if args.local_config:
+        config.load_kube_config()
+    else:
+        config.load_incluster_config()
+
     make_shared_cm(args.namespace)  # ensure the shared configmap is provisioned at startup
 
     consumer = create_consumer(args.client_id, bootstrap_list)
