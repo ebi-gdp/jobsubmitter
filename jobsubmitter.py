@@ -34,6 +34,7 @@ def main(args=None):
     make_shared_cm(args.namespace)  # ensure the shared configmap is provisioned at startup
 
     consumer = create_consumer(args.client_id, bootstrap_list)
+    logger.info("Listening for job requests")
 
     for message in consumer:
         params = message.value

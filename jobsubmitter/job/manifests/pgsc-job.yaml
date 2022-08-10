@@ -16,7 +16,7 @@ spec:
       serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run hello -c /config/k8s.config
+            - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.0.0 -profile test -c /config/k8s.config
           command:
             - /bin/sh
             - '-c'
@@ -54,6 +54,16 @@ spec:
                 configMapKeyRef:
                   name: nxf-base
                   key: nxf_work
+            - name: NXF_HOME
+              valueFrom:
+                configMapKeyRef:
+                  name: nxf-base
+                  key: nxf_work
+            - name: NXF_SCM_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: nxf-base
+                  key: nxf_scm_file
           image: 'docker.io/nextflow/nextflow:21.10.6'
           name: nextflow
           resources:
@@ -74,7 +84,8 @@ spec:
       volumes:
         - name: vol-1
           persistentVolumeClaim:
-            claimName: ssdnfsclaim
+            claimName: nfs-claim-new
         - name: config
           configMap:
-            name: dummy-configmap # modified by python 
+            name: dummy-configmap # modified by python
+

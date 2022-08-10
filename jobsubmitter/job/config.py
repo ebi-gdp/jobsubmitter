@@ -44,12 +44,12 @@ def make_shared_cm(ns: str) -> None:
     """ Ensure the shared ConfigMap is provisioned in the namespace
 
     The ConfigMap describes environment variables shared across all job instances """
-    base_cm: ConfigMap = base_configmap()
     try:
-        base_cm.read(namespace=ns)
+        cm: ConfigMap = base_configmap()
+        cm.update(namespace=ns)  # always synchronise shared configmap
     except client.exceptions.ApiException:
-        logger.debug("Creating base configmap")
-        base_cm.create(namespace=ns)
+        logger.debug("Creating base configmaps")
+        cm.create(namespace=ns)
 
 
 def _make_cm_meta(client_id: str, params: dict[str, str], ns: str) -> ObjectMeta:
@@ -81,7 +81,7 @@ def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
     return ConfigMap(data=file_dict, metadata=meta, immutable=False)
 
 
-def _make_executor_cm(id: str, ns: str) -> ConfigMap:
+def _make_executor_cm(d: dict, ns: str) -> ConfigMap:
     """ Create an executor ConfigMap, unique to each pipeline run instance.
 
      The created ConfigMap describes _how_ the pipeline will execute.
@@ -93,7 +93,7 @@ def _make_executor_cm(id: str, ns: str) -> ConfigMap:
 
     # PVC name should very rarely change, but if it does change pull it from the job manifest
     execution_params = {'k8s.storageClaimName': _get_pvc_name(),
-                        'k8s.namespace': ns,} | d
+                        'k8s.namespace': f"'{ns}'" }
     cm: ConfigMap = base_executor()
     configfile: NextflowConfigFile = NextflowConfigFile(cm.data['k8s.config'])
     cm.data['k8s.config'] = configfile.update(execution_params).data

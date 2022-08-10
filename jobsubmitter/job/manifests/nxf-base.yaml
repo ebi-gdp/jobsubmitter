@@ -11,3 +11,5 @@ data:
   nxf_offline: "" 
   nxf_params_file: /config/params.json
   nxf_work: /workspace/work
+  nxf_scm_file: /config/scm
+
