@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: transfer-
+  namespace: intervene-dev
+  labels:
+    app: transfer
+spec:
+  containers:
+  - name: init-transfer
+    image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter/transfer:0.1.0
+    imagePullPolicy: Always
+    env:
+      - name: GLOBUS_CLI_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: globus-app-secret
+            key: client-id
+            optional: false
+      - name: GLOBUS_CLI_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: globus-app-secret
+            key: client-secret
+            optional: false
+      - name: GLOBUS_SRC
+        valueFrom:
+          configMapKeyRef:
+            name: transfer-dummy-configmap  # edited by python
+            key: globus_src
+      - name: LOCAL_DEST
+        valueFrom:
+          configMapKeyRef:
+            name: transfer-dummy-configmap  # edited by python
+            key: local_dest
+  restartPolicy: Never
