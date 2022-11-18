@@ -4,13 +4,13 @@ FROM --platform=linux/amd64 python:3.10
 
 ENV GLOBUS_CLI_INTERACTIVE=0
 
-RUN pip install globus-cli
-
 RUN useradd -ms /bin/bash globus-client
 
 USER globus-client
 
 WORKDIR /home/globus-client
+
+RUN pip install globus-cli
 
 RUN wget https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
 

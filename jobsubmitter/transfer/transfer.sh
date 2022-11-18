@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -13,24 +13,30 @@ help() {
 }
 
 check_env() {
-  envVars=("GLOBUS_CLI_CLIENT_ID" "GLOBUS_CLI_CLIENT_SECRET" "GLOBUS_SRC" "LOCAL_DEST")
-  for var in "${envVars[@]}"; do
-      if [ -z ${var+x} ];
-      then
-        echo "$var is unset";
-        help
-        exit 1
-      else
-        echo "$var is set";
-      fi
-  done
+  if [[ -v GLOBUS_CLI_CLIENT_ID ]] || [[ -v GLOBUS_CLI_CLIENT_SECRET ]]; then
+    echo "Secrets set"
+  else
+    echo "ERROR: Secrets not set"
+    help
+    exit 1
+  fi
+
+  if [[ -v LOCAL_DEST ]] || [[ -v GLOBUS_SRC ]]; then
+    echo "LOCAL_DEST: $LOCAL_DEST"
+    echo "GLOBUS_SRC: $GLOBUS_SRC"
+  else
+    echo "ERROR: missing environment variables GLOBUS_SRC or LOCAL_DEST"
+    help
+    exit 1
+  fi
 }
 
 setup() {
-  ENDPOINT_DETAILS=$(globus endpoint create --personal my-gcp-endpoint-shared --default-directory /data/)
+  ENDPOINT_DETAILS=$(globus endpoint create --personal my-gcp-endpoint-shared)
   SETUP_ID=$(echo "$ENDPOINT_DETAILS" | sed -n 's/.*Setup Key://p' | sed -e 's/^[ \t]*//')
   GLOBUS_DEST=$(echo "$ENDPOINT_DETAILS" | sed -n 's/.*Endpoint ID://p' | sed -e 's/^[ \t]*//')
-  globusconnectpersonal -setup "$SETUP_ID"
+  echo "SETUP_ID: $SETUP_ID"
+  globusconnectpersonal -debug -setup "$SETUP_ID" || cat /home/globus-client/.globusonline/lta/register.log
   globusconnectpersonal -start &
 
   until [ "$(globusconnectpersonal -status | sed -n 's/.*Globus Online://p' | sed -e 's/^[ \t]*//')" = "connected" ]
@@ -56,7 +62,9 @@ transfer() {
 main() {
   check_env
   setup
+  # debug live container with sleep
+  echo "Sleeping..."
+  sleep 3600
 }
 
 main
-
