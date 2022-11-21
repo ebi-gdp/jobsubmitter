@@ -32,11 +32,11 @@ check_env() {
 }
 
 setup() {
-  ENDPOINT_DETAILS=$(globus endpoint create --personal my-gcp-endpoint-shared)
-  SETUP_ID=$(echo "$ENDPOINT_DETAILS" | sed -n 's/.*Setup Key://p' | sed -e 's/^[ \t]*//')
-  GLOBUS_DEST=$(echo "$ENDPOINT_DETAILS" | sed -n 's/.*Endpoint ID://p' | sed -e 's/^[ \t]*//')
-  echo "SETUP_ID: $SETUP_ID"
-  globusconnectpersonal -debug -setup "$SETUP_ID" || cat /home/globus-client/.globusonline/lta/register.log
+  globus gcp create mapped test --force-encryption > endpoint.txt
+  SETUP_ID=$(tail endpoint.txt -n 1 | cut -f 2 -d ':' | tr -d ' ')
+  GLOBUS_DEST=$(tail endpoint.txt -n 2 | cut -f 2 -d ':' | tr -d ' ')
+
+  globusconnectpersonal -debug -setup --setup-key "$SETUP_ID" || cat /home/globus-client/.globusonline/lta/register.log
   globusconnectpersonal -start &
 
   until [ "$(globusconnectpersonal -status | sed -n 's/.*Globus Online://p' | sed -e 's/^[ \t]*//')" = "connected" ]
