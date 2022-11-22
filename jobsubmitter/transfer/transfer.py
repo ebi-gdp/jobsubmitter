@@ -1,24 +1,24 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
 import os
 import subprocess
-import logging
 import time
-
+import atexit
 import globus_sdk
 
-logging.getLogger('globus_sdk').setLevel(logging.DEBUG)
+logging.getLogger('globus_sdk').setLevel(logging.WARNING)  # globus_sdk is chatty
 logger = logging.getLogger(__name__)
-log_fmt = "%(name)s: %(asctime)s %(levelname)-8s %(message)s"
-logging.basicConfig(level=logging.DEBUG,
-                    format=log_fmt,
-                    datefmt='%Y-%m-%d %H:%M:%S')
 
 
 def create_local_endpoint(endpoint_name: str) -> tuple[str, str]:
-    logger.debug(f"Creating endpoint: endpoint_name")
+    """ Create a local endpoint using the globus CLI """
+    logger.info(f"Creating endpoint: {endpoint_name}")
     process = subprocess.run(["globus", "gcp", "create", "mapped", endpoint_name, "--force-encryption"],
                              stdout=subprocess.PIPE)
 
-    # example output:
+    # example stdout:
     # Message:       Endpoint created successfully
     # Collection ID: uuid
     # Setup Key:     uuid
@@ -31,17 +31,13 @@ def create_local_endpoint(endpoint_name: str) -> tuple[str, str]:
 
 
 def setup_gpc(key: str, debug: bool = False) -> None:
-    """ Set up globus personal connect with a key
+    """ Set up globus personal connect (GPC) with a setup key, and start a GPC process
 
     An open and active stdin is a _requirement_ for the globusconnectpersonal program.
     If one isn't available, you'll get a crash during setup with very unhelpful error messages.
     See: https://groups.google.com/a/globus.org/g/discuss/c/92Qdg6OdrFY.
-
-    @param debug:
-    @param key:
-    @return:
     """
-    logger.debug("Setting up Globus personal connect...")
+    logger.info("Setting up Globus personal connect")
 
     if debug:
         os.environ["GCP_DEBUG"] = "1"
@@ -60,7 +56,7 @@ def setup_gpc(key: str, debug: bool = False) -> None:
     return_code = process.wait()
 
     if return_code == 0:
-        logger.debug("Globus personal connect configured :)")
+        logger.info("Globus personal connect configured :)")
         process.terminate()
     else:
         logger.critical(f"Globus personal connect set up failed, returned code {return_code}")
@@ -70,44 +66,99 @@ def setup_gpc(key: str, debug: bool = False) -> None:
         raise SystemExit(1)
 
     # start globusconnectpersonal in a new process
+    logger.info("Starting globus personal connect process")
     subprocess.Popen(["globusconnectpersonal", "-start"])
+    wait_until_connected()
+
+
+def wait_until_connected(wait: int = 10):
+    process = subprocess.run(["globusconnectpersonal", "-status"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    status: str = " ".join(process.stdout.split(b'\n')[0].decode("utf-8").split())
+
+    if "Globus Online: connected" not in status:
+        logger.info("Waiting for globus to connect")
+        time.sleep(wait)
+        wait_until_connected()
+    else:
+        logger.info("Globus connected")
+        logger.debug(process.stdout.decode("utf-8"))
 
 
 def authorise_transfer():
-    logger.debug("Getting Globus authorisation")
+    logger.info("Getting Globus authorisation")
     # the globus CLI understands environment variables
     # however, globus_sdk doesn't, so need to authorise for transfer
     client_id = os.getenv("GLOBUS_CLI_CLIENT_ID")
     client_key = os.getenv("GLOBUS_CLI_CLIENT_SECRET")
     client = globus_sdk.ConfidentialAppAuthClient(client_id, client_key)
-    logger.debug("Authorised")
+    logger.info("Authorised")
     return globus_sdk.ClientCredentialsAuthorizer(confidential_client=client,
                                                   scopes=[globus_sdk.scopes.TransferScopes.all])
 
 
-def submit_transfer(source_endpoint_id: str, destination_endpoint_id: str) -> None:
-    logger.debug("Submitting transfer request")
+def submit_transfer(source_endpoint_id: str, destination_endpoint_id: str, dest_dir: str) -> None:
     tc = globus_sdk.TransferClient(authorizer=authorise_transfer())
     tdata = globus_sdk.TransferData(tc,
                                     source_endpoint_id,
                                     destination_endpoint_id,
-                                    label="SDK example",
+                                    label="IGS4EU transfer",
                                     encrypt_data=True,
                                     sync_level="checksum")
-    source_dir = "/"
-    dest_dir = os.getenv("LOCAL_DEST")  # TODO: use argparse?
+    source_dir = "/"  # sync everything (the root of the source endpoint)
     tdata.add_item(source_dir, dest_dir, recursive=True)
-    # globus_sdk.services.transfer.errors.TransferAPIError: ('POST', 'https://transfer.api.globus.org/v0.10/transfer', 'Bearer', 409, 'GCDisconnectedException', "The Globus Connect Personal endpoint 'test (ad6432aa-69c2-11ed-8fd2-e9cb7c15c7d2)' is not currently connected to Globus", 'yrWr1Xkho')
+
+    logger.info("Submitting transfer request")
+    logger.info(f"Source endpoint id: {source_endpoint_id}")
+    logger.info(f"Destination endpoint id: {destination_endpoint_id}")
     transfer_result = tc.submit_transfer(tdata)
+    task_id = transfer_result["task_id"]
 
+    logger.info(f"Transfer request {task_id} submitted. Waiting...")
     while not tc.task_wait(transfer_result["task_id"], timeout=60):
-        logger.debug(f"Waiting for transfer {transfer_result['task_id']} to complete")
+        logger.info(f"Waiting for transfer {transfer_result['task_id']} to complete")
 
 
-# TODO: give proper endpoint name? and cleanup?
-# TODO: set up argparse
-source_id = os.getenv("GLOBUS_SRC")
-destination_id, setup_key = create_local_endpoint(endpoint_name="test")
-setup_gpc(key=setup_key)
-submit_transfer(source_id, destination_id)
+def parse_args(args=None):
+    parser = argparse.ArgumentParser(description="Transfer")
+    parser.add_argument("--endpoint_name", dest="endpoint_name", required=True)
+    parser.add_argument("--source_endpoint_id", dest="source_id", required=True)
+    parser.add_argument("--destination_dir", dest="dest_dir", required=True)
+    parser.add_argument("--verbose", dest="verbose", action="store_true")
+    return parser.parse_args()
 
+
+def cleanup(endpoint_id: str):
+    logger.info(f"Cleaning up: deleting local endpoint {endpoint_id}")
+    tc = globus_sdk.TransferClient(authorizer=authorise_transfer())
+    tc.delete_endpoint(endpoint_id)
+    logger.info("Cleaning up: stopping globus personal connect process")
+    subprocess.run(["globusconnectpersonal", "-stop"])
+
+
+def transfer():
+    args = parse_args()
+    if args.verbose:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+
+    log_fmt = "%(name)s: %(asctime)s %(levelname)-8s %(message)s"
+    logging.basicConfig(level=log_level,
+                        format=log_fmt,
+                        datefmt='%Y-%m-%d %H:%M:%S')
+
+    logger.info(f"Endpoint name: {args.endpoint_name}")
+    logger.info(f"Source endpoint id: {args.source_id}")
+    logger.info(f"Destination dir: {args.dest_dir}")
+
+    destination_id, setup_key = create_local_endpoint(endpoint_name=args.endpoint_name)
+    atexit.register(cleanup, endpoint_id=destination_id)
+    setup_gpc(key=setup_key)
+    submit_transfer(source_endpoint_id=args.source_id, destination_endpoint_id=destination_id,
+                    dest_dir=args.dest_dir)
+
+    logger.info("Transfer completed. Goodbye :)")
+
+
+if __name__ == "__main__":
+    transfer()
