@@ -6,6 +6,7 @@ from ruamel.yaml import YAML
 from jobsubmitter.job import manifests
 
 
+
 def load_manifest(path: str) -> str:
     """ Grab local manifests and read them """
     return importlib.resources.read_text(manifests, path)

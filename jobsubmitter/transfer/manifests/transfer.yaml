@@ -6,13 +6,21 @@ metadata:
   labels:
     app: transfer
 spec:
+  initContainers:
+    - name: volume-mount-hack
+      image: busybox
+      command: [ "sh", "-c", "chown -R 1000:1000 /data" ]
+      volumeMounts:
+        - name: vol-1
+          mountPath: /data
   containers:
   - name: init-transfer
     image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter/transfer:0.1.0
-    command: ["python", "transfer.py"]
+    command: ["python", "globus_transfer.py"]
     args: ["--endpoint_name", "test",
            "--source_endpoint_id", "$(GLOBUS_SRC)",
            "--destination_dir", "$(LOCAL_DEST)"]
+
     imagePullPolicy: Always
     env:
       - name: GLOBUS_CLI_CLIENT_ID
@@ -32,9 +40,11 @@ spec:
           configMapKeyRef:
             name: transfer-dummy-configmap  # edited by python
             key: globus_src
+            optional: false
       - name: LOCAL_DEST
         valueFrom:
           configMapKeyRef:
             name: transfer-dummy-configmap  # edited by python
             key: local_dest
+            optional: false
   restartPolicy: Never

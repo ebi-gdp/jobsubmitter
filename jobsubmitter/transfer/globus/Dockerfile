@@ -17,11 +17,11 @@ RUN wget https://downloads.globus.org/globus-connect-personal/linux/stable/globu
 # version number will change, so strip out version number in globus folder
 RUN mkdir globus && tar -xf globusconnectpersonal-latest.tgz -C globus --strip-components=1 && rm  globusconnectpersonal-latest.tgz
 
-COPY transfer.py .
+COPY globus_transfer.py .
 
 USER root
 
-RUN mkdir /data && chown globus-client:globus-client /data && chmod 755 transfer.py
+RUN mkdir /data && chown globus-client:globus-client /data && chmod 755 globus_transfer.py
 
 USER globus-client
 

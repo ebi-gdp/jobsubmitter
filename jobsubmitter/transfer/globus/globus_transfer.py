@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
+import atexit
 import logging
 import os
 import subprocess
 import time
-import atexit
+
 import globus_sdk
 
 logging.getLogger('globus_sdk').setLevel(logging.WARNING)  # globus_sdk is chatty

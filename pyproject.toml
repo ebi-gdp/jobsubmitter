@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "queuebernetes"
+name = "jobsubmitter"
 version = "0.1.0"
 description = ""
 authors = ["Benjamin Wingfield <bwingfield@ebi.ac.uk>"]
