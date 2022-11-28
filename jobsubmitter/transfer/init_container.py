@@ -40,7 +40,7 @@ def build_init_containers(config_map_name) -> tuple[Volume, list[Container]]:
 def _instantiate_pvc() -> PersistentVolumeClaim:
     logger.info("Making ReadWriteMany Persistent Volume Claim")
     # TODO: make namespace dynamic
-    meta = ObjectMeta(namespace="intervene-dev", generateName="transfer-")
+    meta = ObjectMeta(namespace="intervene-dev", generateName="transfer-", labels={'app': 'transfer'})
     pv = PersistentVolumeClaim()
     pv.metadata = meta
     pv_spec = PersistentVolumeClaimSpec()

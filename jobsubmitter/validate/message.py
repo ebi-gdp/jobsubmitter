@@ -11,5 +11,7 @@ def validate_message(message, validator: jsonschema.Draft202012Validator) -> dic
         logger.debug("JSON passes validation")
         return message
     except jsonschema.exceptions.ValidationError:
-        logger.error("JSON fails validation", exc_info=True)
+        logger.error("JSON fails validation")
+        logger.error(f"Invalid JSON content: {message}")
+        logger.error("Exception traceback", exc_info=True)
         return {}

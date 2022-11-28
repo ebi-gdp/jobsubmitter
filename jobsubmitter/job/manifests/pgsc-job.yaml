@@ -16,7 +16,7 @@ spec:
       serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.0.0 -profile test -c /config/k8s.config
+            - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 -profile test -c /config/k8s.config
           command:
             - /bin/sh
             - '-c'
@@ -66,6 +66,7 @@ spec:
                   key: nxf_scm_file
           image: 'docker.io/nextflow/nextflow:21.10.6'
           name: nextflow
+          workingDir: /workspace
           resources:
             limits:
               cpu: 2

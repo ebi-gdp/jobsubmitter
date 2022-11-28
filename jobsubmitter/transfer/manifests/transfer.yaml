@@ -20,8 +20,6 @@ spec:
     args: ["--endpoint_name", "test",
            "--source_endpoint_id", "$(GLOBUS_SRC)",
            "--destination_dir", "$(LOCAL_DEST)"]
-
-    imagePullPolicy: Always
     env:
       - name: GLOBUS_CLI_CLIENT_ID
         valueFrom:

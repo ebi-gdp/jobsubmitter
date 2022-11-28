@@ -18,10 +18,10 @@ def make_cm_vol(params: dict[str, dict],
     result: Response = cm.createNamespacedConfigMap(namespace=ns)
     cm.metadata.name = result.obj.metadata.name  # update name metadata with generated name
 
-    logger.debug("Merging k8s execution configuration...")
+    logger.debug("Merging k8s execution configuration and updating")
     cm.merge(_make_executor_cm(params, ns))
     cm.immutable = True
-    logger.debug(cm)
+    cm.update()
 
     return cm, Volume(name='config', configMap=ConfigMapVolumeSource(name=result.obj.metadata.name))
 
@@ -61,7 +61,7 @@ def _make_cm_meta(client_id: str, params: dict[str, str], ns: str) -> ObjectMeta
 
     return ObjectMeta(labels=labels,
                       namespace=ns,
-                      generateName='nxf-configmap-vol-')
+                      generateName='nxf-vol-')
 
 
 def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
