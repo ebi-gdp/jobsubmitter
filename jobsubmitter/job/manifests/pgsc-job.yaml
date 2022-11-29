@@ -10,13 +10,13 @@ metadata:
     version: dev 
 spec:
   ttlSecondsAfterFinished: 3600
-  backoffLimit: 1
+  backoffLimit: 0
   template:
     spec:
       serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 -profile test -c /config/k8s.config
+            - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 --input /config/input.json -c /config/k8s.config
           command:
             - /bin/sh
             - '-c'
@@ -64,7 +64,7 @@ spec:
                 configMapKeyRef:
                   name: nxf-base
                   key: nxf_scm_file
-          image: 'docker.io/nextflow/nextflow:21.10.6'
+          image: 'docker.io/nextflow/nextflow:22.10.3'
           name: nextflow
           workingDir: /workspace
           resources:

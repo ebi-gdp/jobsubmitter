@@ -1,9 +1,12 @@
 import logging
 import argparse
+from threading import Thread
+
 from kubernetes import config
 from jobsubmitter.consume import create_consumer
 from jobsubmitter.job.job import submit_job
 from jobsubmitter.job.config import make_shared_cm
+from jobsubmitter.watch import job_watcher
 
 logger = logging.getLogger(__name__)
 log_fmt = "%(name)s: %(asctime)s %(levelname)-8s %(message)s"
@@ -33,10 +36,14 @@ def main(args=None):
 
     make_shared_cm(args.namespace)  # ensure the shared configmap is provisioned at startup
 
+    watch_thread = Thread(target=job_watcher, daemon=True)
+    watch_thread.start()
+
     consumer = create_consumer(args.client_id, bootstrap_list)
     logger.info("Listening for job requests")
 
     for message in consumer:
+        assert watch_thread.is_alive()
         params = message.value
 
         if params == {}:  # messages that fail validation are returned empty

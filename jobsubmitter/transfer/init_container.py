@@ -45,7 +45,8 @@ def _instantiate_pvc() -> PersistentVolumeClaim:
     pv.metadata = meta
     pv_spec = PersistentVolumeClaimSpec()
     pv_spec.accessModes = ["ReadWriteMany"]
-    pv_spec.storageClassName = "ssd-cinder"
+    # TODO: RWX is a pain
+    pv_spec.storageClassName = "example-nfs"
     # TODO: make storage size dynamic. from globus?
     pv_spec.resources = ResourceRequirements(requests={'storage': '40Gi'})
     pv.spec = pv_spec

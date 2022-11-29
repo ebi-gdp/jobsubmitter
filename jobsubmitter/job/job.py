@@ -2,8 +2,8 @@ import logging
 
 from hikaru.model.rel_1_21 import *
 
-from .base_manifests import base_job
-from .config import make_cm_vol, adopt_configmap
+from jobsubmitter.job.base_manifests import base_job
+from jobsubmitter.job.config import make_cm_vol, adopt_object
 
 from jobsubmitter.transfer.init_container import build_init_containers
 
@@ -26,15 +26,14 @@ def submit_job(params, client_id, ns) -> None:
     cm, job = _populate_job_instance(params['pipeline_param'], client_id, ns, volume)
     job.spec.template.spec.initContainers = init_containers
 
-    logger.debug("Submitting job to K8S")
+
     job.create(namespace=ns)
-    logger.debug(job)
+    logger.debug(f"Submitted job {job.metadata.name} to K8S")
 
-    # patch config map
-    adopt_configmap(job, cm)
-
-    # TODO: adopt other config map
-    # TODO: adopt pvc
+    # set job as owner of auxiliary objects (configmap / pvc)
+    # when job dies, these objects must die too
+    pvc = PersistentVolumeClaim().read(name=volume.persistentVolumeClaim.claimName, namespace=ns)
+    [adopt_object(job, x) for x in [cm, transfer_cm, pvc]]
 
 
 def _make_transfer_cm(params: dict, local_dest: str = '/home/globus-client/data') -> ConfigMap:
@@ -56,12 +55,15 @@ def _populate_job_instance(params: dict, client_id: str, ns: str, pvc_vol: Volum
     nxf_job: Job = base_job()
     cm: ConfigMap
     cm_vol: Volume
-    cm, cm_vol = make_cm_vol(params, client_id, ns)
+    cm, cm_vol = make_cm_vol(params, client_id, ns, pvc_vol)
     volumes = nxf_job.spec.template.spec.volumes
     # set up persistent data shared across transfer initContainer + job
     volumes[0] = pvc_vol
     # mount config map too
     volumes[1] = cm_vol
+
+    # TODO: add version to parameters, update consumer ID?
+    nxf_job.metadata.labels = nxf_job.metadata.labels | {'run-id': params['id'], 'version': '1.3'}
 
     return cm, nxf_job
 
