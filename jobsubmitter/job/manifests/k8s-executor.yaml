@@ -17,3 +17,10 @@ data:
             platform = 'gitlab'
         }
      }
+  s3.config: |
+    aws {
+        client {
+            endpoint = "uk1s3.embassy.ebi.ac.uk"
+            protocol = "https"
+        }
+    }

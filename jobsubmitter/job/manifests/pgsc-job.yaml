@@ -16,7 +16,8 @@ spec:
       serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 --input /config/input.json -c /config/k8s.config
+            # - nextflow run https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 --input /config/input.json -c /config/k8s.config
+            - nextflow run  https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 --input /config/input.json -c /config/s3.config -c /config/k8s.config --outdir s3://intervene-test/test-calc --vzs
           command:
             - /bin/sh
             - '-c'
@@ -59,6 +60,18 @@ spec:
                 configMapKeyRef:
                   name: nxf-base
                   key: nxf_work
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-secret
+                  key: aws-access-key-id
+                  optional: false
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-secret
+                  key: aws-secret-access-key
+                  optional: false
             - name: NXF_SCM_FILE
               valueFrom:
                 configMapKeyRef:
