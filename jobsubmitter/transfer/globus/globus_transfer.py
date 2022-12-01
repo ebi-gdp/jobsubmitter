@@ -8,6 +8,7 @@ import subprocess
 import time
 
 import globus_sdk
+from globus_sdk.services.transfer import errors
 
 logging.getLogger('globus_sdk').setLevel(logging.WARNING)  # globus_sdk is chatty
 logger = logging.getLogger(__name__)
@@ -111,12 +112,27 @@ def submit_transfer(source_endpoint_id: str, destination_endpoint_id: str, dest_
     logger.info("Submitting transfer request")
     logger.info(f"Source endpoint id: {source_endpoint_id}")
     logger.info(f"Destination endpoint id: {destination_endpoint_id}")
-    transfer_result = tc.submit_transfer(tdata)
+    transfer_result = _retry_transfer(tc=tc, tdata=tdata, i=0)
     task_id = transfer_result["task_id"]
 
     logger.info(f"Transfer request {task_id} submitted. Waiting...")
     while not tc.task_wait(transfer_result["task_id"], timeout=60):
         logger.info(f"Waiting for transfer {transfer_result['task_id']} to complete")
+
+
+def _retry_transfer(tc, tdata, i):
+    try:
+        return tc.submit_transfer(tdata)
+    except errors.TransferAPIError as exc:
+        if i > 5:
+            logger.debug("Giving up waiting to reconnect, goodbye")
+            raise
+        else:
+            # sometimes globus personal connect takes a little while to reconnect to globus
+            logger.debug(f"TransferAPIError, waiting for GPC to automatically reconnect... {i}")
+            time.sleep(5)
+            i += 1
+            _retry_transfer(tc, tdata, i)
 
 
 def parse_args(args=None):
