@@ -77,7 +77,7 @@ def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
         - Pipeline settings such as LiftOver
      """
     # prepend the PVC mount path to the paths in the message
-    # TODO: dynamically set PVC mount path
+    # TODO: dynamically set PVC mount path (/workspace)
     target_genomes = []
     for file in params['target_genomes']:
         d = {}
@@ -87,8 +87,11 @@ def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
             d.update({k: v})
         target_genomes.append(d)
 
+    nxf_params = params['nxf_params_file']
+    nxf_params['outdir'] = f"s3://intervene-test/{params['id']}"
+
     file_dict: dict[str, str] = {'input.json': json.dumps(target_genomes),
-                                 'params.json': json.dumps(params['nxf_params_file'])}
+                                 'params.json': json.dumps(nxf_params)}
     meta = _make_cm_meta(client_id, params, ns)
     return ConfigMap(data=file_dict, metadata=meta, immutable=False)
 
