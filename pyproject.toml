@@ -10,6 +10,9 @@ jsonschema = "^4.5.1"
 hikaru = "^0.11.0-beta.0"
 kafka-python = "^2.0.2"
 
+[tool.poetry.scripts]
+submit_job = "jobsubmitter.submit_job:main"
+
 [tool.poetry.dev-dependencies]
 
 [build-system]

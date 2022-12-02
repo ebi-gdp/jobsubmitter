@@ -7,16 +7,24 @@ from kafka import KafkaProducer
 from kubernetes import client
 
 logger = logging.getLogger(__name__)
-producer = KafkaProducer(value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 
-def job_watcher():
-    logger.debug(f"Watching jobs")
+def job_watcher(bootstrap_servers):
+    producer = KafkaProducer(bootstrap_servers=bootstrap_servers,
+                             value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+
+    if not producer.bootstrap_connected():
+        logger.critical("Can't connect to kafka broker")
+        raise RuntimeError()
+    else:
+        logger.debug("Producer connected to bootstrap server")
+        logger.info(f"Job watch starting")
+
     api_client = client.BatchV1Api()
     known_jobs = {}
 
     while True:
-        logger.debug("Querying K8S API for list of jobs")
+        logger.info("Getting list of jobs")
         jobs = api_client.list_namespaced_job('intervene-dev')
 
         if len(jobs.items) == 0:
@@ -30,7 +38,7 @@ def job_watcher():
                     logger.debug(f"Found pgsc-calc job {job.metadata.name}")
                     run_id, status = _get_job_status(job)
                     pruned_jobs = _prune_jobs(known_jobs, jobs)
-                    known_jobs = _update_jobs(run_id, status, pruned_jobs)
+                    known_jobs = _update_jobs(producer=producer, run_id=run_id, status=status, known_jobs=pruned_jobs)
                 else:
                     logger.debug("Job not pgsc-calc, ignoring")
                     continue
@@ -52,24 +60,24 @@ def _get_job_status(job):
     return run_id, status
 
 
-def _update_jobs(run_id: str, status: str, known_jobs: dict[str, str]) -> dict[str, str]:
+def _update_jobs(producer, run_id: str, status: str, known_jobs: dict[str, str]) -> dict[str, str]:
     if run_id in known_jobs:
         if known_jobs[run_id] == status:
-            logger.debug(f"Message already sent for job {run_id}")
+            logger.info(f"Message already sent for job {run_id}")
             return known_jobs
         else:
-            logger.debug(f"Status change for job {run_id}")
-            _send_message(status=status, run_id=run_id)
+            logger.info(f"Status change for job {run_id}")
+            _send_message(producer=producer, status=status, run_id=run_id)
     else:
-        logger.debug(f"New job found: {run_id}")
-        _send_message(status=status, run_id=run_id)
+        logger.info(f"New job found: {run_id}")
+        _send_message(producer=producer, status=status, run_id=run_id)
 
-    return  known_jobs | {run_id: status}
+    return known_jobs | {run_id: status}
 
 
 def _prune_jobs(known_jobs: dict[str, str], job_list):
     # If a job is known but missing from the job list, it's been cleaned up, so remove it
-    job_names: set = { x.metadata.name for x in job_list.items }
+    job_names: set = {x.metadata.name for x in job_list.items}
     missing_jobs = set(known_jobs.keys()).difference(job_names)
     if missing_jobs:
         for x in missing_jobs:
@@ -80,7 +88,6 @@ def _prune_jobs(known_jobs: dict[str, str], job_list):
     return known_jobs
 
 
-def _send_message(status: str, run_id: str) -> None:
+def _send_message(producer, status: str, run_id: str) -> None:
     logger.debug(f"Sending message {run_id} with status {status}")
     producer.send('pipeline-status', {'status': status, 'uid': run_id, 'outdir': run_id})
-

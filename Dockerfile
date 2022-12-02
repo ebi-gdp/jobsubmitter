@@ -1,24 +1,29 @@
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t dockerhub.ebi.ac.uk/gdp-public/jobsubmitter .
 
 FROM python:3.10-alpine AS builder
+
+RUN apk update && apk add build-base
+
 WORKDIR /app
-ADD pyproject.toml poetry.lock /app/
 
-RUN apk add build-base libffi-dev
 RUN pip install poetry
-RUN poetry config virtualenvs.in-project true
-RUN poetry install --no-ansi
 
-# ---
+RUN python -m venv /venv
+
+COPY pyproject.toml poetry.lock /app
+
+RUN poetry export --without-hashes -f requirements.txt | /venv/bin/pip install -r /dev/stdin
+
+COPY . .
+
+RUN poetry build && /venv/bin/pip install dist/*.whl
 
 FROM python:3.10-alpine
-WORKDIR /app
 
-COPY --from=builder /app /app
-ADD . /app
+COPY --from=builder /venv /venv
 
-RUN adduser app -h /app -u 1000 -g 1000 -DH
-USER 1000
+ENV PATH="/venv/bin:${PATH}"
 
-# change this to match your application
-ENTRYPOINT ["/app/.venv/bin/python", "jobsubmitter.py"]
+# ADD . /app
+# RUN adduser app -h /app -u 1000 -g 1000 -DH
+# USER 1000

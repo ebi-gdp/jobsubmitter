@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jobsubmitter-deploy
+  namespace: intervene-dev
 spec:
   replicas: 1
   selector:
@@ -15,11 +16,10 @@ spec:
       serviceAccountName: jobsubmitter      
       containers:
         - name: js
-          image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter
+          image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter:0.1.0
           imagePullPolicy: Always
           args: 
-            - |
-              /app/.venv/bin/python jobsubmitter.py --kafka_bootstrap_urls kafka-cluster-kafka-bootstrap.kafka-dev.svc.cluster.local:9092 --client_id $POD_NAME --namespace $POD_NAMESPACE
+            - submit_job --kafka_bootstrap_urls kafka-cluster-kafka-bootstrap.kafka-dev.svc.cluster.local:9092 --client_id $POD_NAME --namespace $POD_NAMESPACE --verbose
           command:
             - sh
             - -c
