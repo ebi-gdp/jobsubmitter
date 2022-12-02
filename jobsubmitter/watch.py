@@ -18,9 +18,10 @@ def job_watcher():
     while True:
         logger.debug("Querying K8S API for list of jobs")
         jobs = api_client.list_namespaced_job('intervene-dev')
+
         if len(jobs.items) == 0:
             logger.debug("Found no jobs in job list, sleeping 1 minute")
-            known_jobs = _prune_jobs(known_jobs=known_jobs, job_list=jobs)
+            known_jobs = _prune_jobs(known_jobs, jobs)
             time.sleep(60)
         else:
             logger.debug("Found jobs in job list")
@@ -28,16 +29,17 @@ def job_watcher():
                 if 'pgsc-calc' in job.metadata.name:
                     logger.debug(f"Found pgsc-calc job {job.metadata.name}")
                     run_id, status = _get_job_status(job)
-                    known_jobs = _update_jobs(run_id, status, _prune_jobs(known_jobs, jobs))
+                    pruned_jobs = _prune_jobs(known_jobs, jobs)
+                    known_jobs = _update_jobs(run_id, status, pruned_jobs)
                 else:
                     logger.debug("Job not pgsc-calc, ignoring")
                     continue
-                logger.debug("Sleeping 1 minute")
-                time.sleep(60)
+            logger.debug("Sleeping 1 minute")
+            time.sleep(60)
 
 
 def _get_job_status(job):
-    run_id = job.metadata.labels['run-id']
+    run_id = job.metadata.name
     status = ''
     if job.status.start_time is not None:
         status = 'started'
