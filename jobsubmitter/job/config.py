@@ -88,7 +88,7 @@ def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
         target_genomes.append(d)
 
     nxf_params = params['nxf_params_file']
-    nxf_params['outdir'] = f"s3://intervene-test/{params['id']}"
+    nxf_params['outdir'] = f"s3://{params['id']}"
 
     file_dict: dict[str, str] = {'input.json': json.dumps(target_genomes),
                                  'params.json': json.dumps(nxf_params)}

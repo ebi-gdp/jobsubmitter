@@ -53,7 +53,7 @@ def _get_job_status(job):
         status = 'started'
 
     if job.status.succeeded is not None:
-        status = 'succeeded'
+        status = 'completed'
     elif job.status.failed is not None:
         status = 'failed'
 
@@ -90,4 +90,4 @@ def _prune_jobs(known_jobs: dict[str, str], job_list):
 
 def _send_message(producer, status: str, run_id: str) -> None:
     logger.debug(f"Sending message {run_id} with status {status}")
-    producer.send('pipeline-status', {'status': status, 'uid': run_id, 'outdir': run_id})
+    producer.send('pipeline-status', {'status': status.upper(), 'uid': run_id, 'outdir': ""})
