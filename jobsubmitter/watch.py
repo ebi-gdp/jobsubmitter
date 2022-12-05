@@ -21,7 +21,7 @@ def job_watcher(bootstrap_servers):
         logger.info(f"Job watch starting")
 
     api_client = client.BatchV1Api()
-    known_jobs = {}
+    known_jobs: dict[str, str] = {}
 
     while True:
         logger.info("Getting list of jobs")
@@ -29,16 +29,18 @@ def job_watcher(bootstrap_servers):
 
         if len(jobs.items) == 0:
             logger.debug("Found no jobs in job list, sleeping 1 minute")
-            known_jobs = _prune_jobs(known_jobs, jobs)
+            known_jobs: dict[str, str] = _prune_jobs(known_jobs, jobs)
             time.sleep(60)
         else:
             logger.debug("Found jobs in job list")
             for job in jobs.items:
                 if 'pgsc-calc' in job.metadata.name:
                     logger.debug(f"Found pgsc-calc job {job.metadata.name}")
+                    run_id: str
+                    status: str
                     run_id, status = _get_job_status(job)
-                    pruned_jobs = _prune_jobs(known_jobs, jobs)
-                    known_jobs = _update_jobs(producer=producer, run_id=run_id, status=status, known_jobs=pruned_jobs)
+                    pruned_jobs: dict[str, str] = _prune_jobs(known_jobs, jobs)
+                    known_jobs: dict[str, str] = _update_jobs(producer=producer, run_id=run_id, status=status, known_jobs=pruned_jobs)
                 else:
                     logger.debug("Job not pgsc-calc, ignoring")
                     continue
@@ -46,7 +48,7 @@ def job_watcher(bootstrap_servers):
             time.sleep(60)
 
 
-def _get_job_status(job):
+def _get_job_status(job) -> tuple[str, str]:
     run_id = job.metadata.name
     status = ''
     if job.status.start_time is not None:
@@ -75,7 +77,7 @@ def _update_jobs(producer, run_id: str, status: str, known_jobs: dict[str, str])
     return known_jobs | {run_id: status}
 
 
-def _prune_jobs(known_jobs: dict[str, str], job_list):
+def _prune_jobs(known_jobs: dict[str, str], job_list) -> dict[str, str]:
     # If a job is known but missing from the job list, it's been cleaned up, so remove it
     job_names: set = {x.metadata.name for x in job_list.items}
     missing_jobs = set(known_jobs.keys()).difference(job_names)
