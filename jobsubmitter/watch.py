@@ -38,9 +38,9 @@ def job_watcher(bootstrap_servers):
                     logger.debug(f"Found pgsc-calc job {job.metadata.name}")
                     run_id: str
                     status: str
-                    run_id, status = _get_job_status(job)
+                    uid, run_id, status = _get_job_status(job)
                     pruned_jobs: dict[str, str] = _prune_jobs(known_jobs, jobs)
-                    known_jobs: dict[str, str] = _update_jobs(producer=producer, run_id=run_id, status=status, known_jobs=pruned_jobs)
+                    known_jobs: dict[str, str] = _update_jobs(producer=producer, uid=uid, run_id=run_id, status=status, known_jobs=pruned_jobs)
                 else:
                     logger.debug("Job not pgsc-calc, ignoring")
                     continue
@@ -48,7 +48,8 @@ def job_watcher(bootstrap_servers):
             time.sleep(60)
 
 
-def _get_job_status(job) -> tuple[str, str]:
+def _get_job_status(job) -> tuple[str, str, str]:
+    uid = job.metadata.labels.get('run-id')
     run_id = job.metadata.name
     status = ''
     if job.status.start_time is not None:
@@ -59,20 +60,20 @@ def _get_job_status(job) -> tuple[str, str]:
     elif job.status.failed is not None:
         status = 'failed'
 
-    return run_id, status
+    return uid, run_id, status
 
 
-def _update_jobs(producer, run_id: str, status: str, known_jobs: dict[str, str]) -> dict[str, str]:
+def _update_jobs(producer, uid: str, run_id: str, status: str, known_jobs: dict[str, str]) -> dict[str, str]:
     if run_id in known_jobs:
         if known_jobs[run_id] == status:
             logger.info(f"Message already sent for job {run_id}")
             return known_jobs
         else:
             logger.info(f"Status change for job {run_id}")
-            _send_message(producer=producer, status=status, run_id=run_id)
+            _send_message(producer=producer, status=status, run_id=run_id, uid=uid)
     else:
         logger.info(f"New job found: {run_id}")
-        _send_message(producer=producer, status=status, run_id=run_id)
+        _send_message(producer=producer, status=status, run_id=run_id, uid=uid)
 
     return known_jobs | {run_id: status}
 
@@ -90,6 +91,7 @@ def _prune_jobs(known_jobs: dict[str, str], job_list) -> dict[str, str]:
     return known_jobs
 
 
-def _send_message(producer, status: str, run_id: str) -> None:
-    logger.debug(f"Sending message {run_id} with status {status}")
-    producer.send('pipeline-status', {'status': status.upper(), 'uid': run_id, 'outdir': ""})
+def _send_message(producer, status: str, run_id: str, uid: str) -> None:
+    message = {'status': status.upper(), 'uid': uid, 'outdir': ""}
+    logger.debug(f"Sending message for job {run_id}: {message}")
+    producer.send('pipeline-status', message)

@@ -1,8 +1,6 @@
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t dockerhub.ebi.ac.uk/gdp-public/jobsubmitter .
 
-FROM python:3.10-alpine AS builder
-
-RUN apk update && apk add build-base
+FROM --platform=amd64 python:3.10 AS builder
 
 WORKDIR /app
 
@@ -18,7 +16,7 @@ COPY . .
 
 RUN poetry build && /venv/bin/pip install dist/*.whl
 
-FROM python:3.10-alpine
+FROM --platform=amd64 python:3.10-alpine
 
 COPY --from=builder /venv /venv
 

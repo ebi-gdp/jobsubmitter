@@ -18,11 +18,9 @@ spec:
         - name: js
           image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter:0.1.0
           imagePullPolicy: Always
-          args: 
-            - submit_job --kafka_bootstrap_urls kafka-cluster-kafka-bootstrap.kafka-dev.svc.cluster.local:9092 --client_id $POD_NAME --namespace $POD_NAMESPACE --verbose
-          command:
-            - sh
-            - -c
+          command: ["submit_job"]
+          args: ["--kafka_bootstrap_urls", "kafka-cluster-kafka-bootstrap.kafka-dev.svc.cluster.local:9092",
+                 "--client_id", "$(POD_NAME)", "--namespace", "$(POD_NAMESPACE)", "--verbose"]
           env:
             - name: POD_NAME
               valueFrom:
