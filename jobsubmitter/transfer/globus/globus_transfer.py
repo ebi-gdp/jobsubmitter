@@ -69,7 +69,8 @@ def setup_gpc(key: str, debug: bool = False) -> None:
 
     # start globusconnectpersonal in a new process
     logger.info("Starting globus personal connect process")
-    subprocess.Popen(["globusconnectpersonal", "-start"])
+    p = subprocess.check_output(["globusconnectpersonal", "-start"])
+    assert not "Another Globus Connect Personal is currently running" in p.decode
     wait_until_connected()
 
 
