@@ -97,7 +97,7 @@ spec:
       volumes:
         - name: vol-1
           persistentVolumeClaim:
-            claimName: nfs-claim-new
+            claimName: example-nfs-ssd
         - name: config
           configMap:
             name: dummy-configmap # modified by python
