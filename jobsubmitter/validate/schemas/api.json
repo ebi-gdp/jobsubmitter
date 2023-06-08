@@ -7,10 +7,10 @@
       "type": "object",
       "properties": {
         "nxf_params_file": {
-          "$ref": "https://raw.githubusercontent.com/pgscatalog/pgsc_calc/dev/assets/schemas/nxf_params.json"
+          "$ref": "nxf_params.json"
         },
         "target_genomes": {
-          "$ref": "https://raw.githubusercontent.com/pgscatalog/pgsc_calc/dev/assets/schemas/samplesheet.json"
+          "$ref": "samplesheet.json"
         },
         "nxf_work": {
           "type": "string",
@@ -31,14 +31,19 @@
     "globus_details": {
       "type": "object",
       "properties": {
-        "shared_endpoint_id": {
+        "dir_path_on_guest_collection": {
           "type": "string",
-          "description": "A globus endpoint ID. Files are transferred from this destination to local storage.",
+          "description": "A globus endpoint ID. Files are transferred from this destination to local storage."
+        },
+        "guest_collection_id": {
+          "type": "string",
+          "description": "A globus collection ID",
           "format": "uuid"
         }
       },
         "required": [
-          "shared_endpoint_id"
+          "dir_path_on_guest_collection",
+          "guest_collection_id"
         ]
     }
   },
