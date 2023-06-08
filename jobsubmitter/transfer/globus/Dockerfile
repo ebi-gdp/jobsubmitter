@@ -1,32 +1,19 @@
-FROM --platform=linux/amd64 python:3.10
+FROM --platform=linux/amd64 debian:stable-slim
 
-# dockerhub.ebi.ac.uk/gdp-public/jobsubmitter/transfer:0.1.0
+# dockerhub.ebi.ac.uk/gdp-public/jobsubmitter/transfer:0.2.0
 
-ENV GLOBUS_CLI_INTERACTIVE=0
+RUN mkdir /data
 
-RUN useradd -ms /bin/bash globus-client
+RUN apt-get update \
+    && apt-get install -y curl jq \
+    && rm -rf /var/lib/apt/lists/*
 
-USER globus-client
+COPY transfer.sh /opt/transfer.sh
 
-WORKDIR /home/globus-client
+RUN chmod +x /opt/transfer.sh
 
-RUN pip install globus-cli
+WORKDIR /data
 
-RUN wget https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
+ENV PATH="/opt/:${PATH}"
 
-# version number will change, so strip out version number in globus folder
-RUN mkdir globus && tar -xf globusconnectpersonal-latest.tgz -C globus --strip-components=1 && rm  globusconnectpersonal-latest.tgz
-
-COPY globus_transfer.py .
-
-USER root
-
-RUN mkdir /data && chown globus-client:globus-client /data && chmod 755 globus_transfer.py
-
-USER globus-client
-
-ENV PATH="${PATH}:/home/globus-client/globus/"
-
-ENV PATH="${PATH}:/home/globus-client/.local/bin/"
-
-CMD ["./transfer.py"]
+CMD ["./transfer.sh"]

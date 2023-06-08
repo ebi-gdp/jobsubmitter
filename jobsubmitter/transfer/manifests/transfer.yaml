@@ -15,34 +15,32 @@ spec:
           mountPath: /data
   containers:
   - name: init-transfer
-    image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter/transfer:0.1.0
-    command: ["python", "globus_transfer.py"]
-    args: ["--endpoint_name", "test",
-           "--source_endpoint_id", "$(GLOBUS_SRC)",
-           "--destination_dir", "$(LOCAL_DEST)"]
+    image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter/transfer:0.2.0
+    imagePullPolicy: IfNotPresent
+    command: ["transfer.sh"]
     env:
-      - name: GLOBUS_CLI_CLIENT_ID
+      - name: GLOBUS_SECRET_TOKEN
         valueFrom:
           secretKeyRef:
-            name: globus-app-secret
-            key: client-id
+            name: globus
+            key: secret_token
             optional: false
-      - name: GLOBUS_CLI_CLIENT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: globus-app-secret
-            key: client-secret
-            optional: false
-      - name: GLOBUS_SRC
+      - name: GLOBUS_BASE_URL
         valueFrom:
           configMapKeyRef:
             name: transfer-dummy-configmap  # edited by python
-            key: globus_src
+            key: GLOBUS_BASE_URL
             optional: false
-      - name: LOCAL_DEST
+      - name: GLOBUS_GUEST_COLLECTION_ID
         valueFrom:
           configMapKeyRef:
             name: transfer-dummy-configmap  # edited by python
-            key: local_dest
+            key: GLOBUS_GUEST_COLLECTION_ID
+            optional: false
+      - name: JOB_MESSAGE
+        valueFrom:
+          configMapKeyRef:
+            name: transfer-dummy-configmap  # edited by python
+            key: JOB_MESSAGE
             optional: false
   restartPolicy: Never

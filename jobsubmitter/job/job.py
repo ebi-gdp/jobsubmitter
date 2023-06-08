@@ -1,3 +1,4 @@
+import json
 import logging
 
 from hikaru.model.rel_1_21 import *
@@ -17,7 +18,7 @@ def submit_job(params, client_id, ns) -> None:
     job: Job
 
     # create configmap for transfer initContainer
-    transfer_cm = _make_transfer_cm(params['globus_details'])
+    transfer_cm = _make_transfer_cm(params)
 
     # get a list of initcontainers, and assign the new configmap
     volume, init_containers = build_init_containers(transfer_cm.metadata.name)
@@ -44,7 +45,9 @@ def _make_transfer_cm(params: dict, local_dest: str = '/home/globus-client/data'
     - the volume-mount-hack initContainer fixes PVC permissions
     """
     meta = ObjectMeta(namespace="intervene-dev", generateName="transfer-", labels={'app': 'transfer'})
-    d = {'globus_src': params['shared_endpoint_id'] } | { 'local_dest': local_dest}
+    d = {'GLOBUS_GUEST_COLLECTION_ID': params['globus_details']['guest_collection_id'],
+         'GLOBUS_BASE_URL': 'https://g-1504d5.dd271.03c0.data.globus.org',
+         'JOB_MESSAGE': json.dumps(params)}
     cm = ConfigMap(immutable=True, metadata=meta, data=d)
     logger.info(f"Creating transfer configmap: {d}")
     cm.create()

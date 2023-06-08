@@ -55,7 +55,7 @@ def _instantiate_pvc() -> PersistentVolumeClaim:
 
 def _instantiate_volumes(pvc) -> tuple[VolumeMount, Volume]:
     logger.info("Creating volume mount")
-    vm = VolumeMount(name="vol-1", mountPath="/home/globus-client/data")
+    vm = VolumeMount(name="vol-1", mountPath="/data")
     logger.debug("Creating volume with PVC source")
     pvcvs = PersistentVolumeClaimVolumeSource(claimName=pvc.metadata.name)
     vol = Volume(name="vol-1", persistentVolumeClaim=pvcvs)
@@ -66,9 +66,9 @@ def _update_env_var_cm_ref(pod: Pod, config_map_name: str) -> list[EnvVar]:
     """ Update the ConfigMap reference in non-secret environment variables """
     logger.info(f"Updating transfer pod config map name: {config_map_name}")
     env_list = pod.object_at_path(['spec', 'containers', 0, 'env'])
-    # GLOBUS_CLI_* env vars are managed by secret
+    # GLOBUS_SECRET* env vars are managed by secret
     # the secret is managed independently of the job submitter
-    not_secrets: list[bool] = ["GLOBUS_CLI" not in x.name for x in env_list]
+    not_secrets: list[bool] = ["GLOBUS_SECRET" not in x.name for x in env_list]
     secrets = list(itertools.compress(env_list, [not x for x in not_secrets]))
     not_secret_env = list(itertools.compress(env_list, not_secrets))
 
