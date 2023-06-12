@@ -40,7 +40,7 @@ def job_watcher(bootstrap_servers):
                     status: str
                     uid, run_id, status = _get_job_status(job)
                     pruned_jobs: dict[str, str] = _prune_jobs(known_jobs, jobs)
-                    known_jobs: dict[str, str] = _update_jobs(producer=producer, uid=uid, run_id=run_id, status=status, known_jobs=pruned_jobs)
+                    known_jobs: dict[str, str] = _update_jobs(producer=producer, pipeline_id=uid, run_id=run_id, status=status, known_jobs=pruned_jobs)
                 else:
                     logger.debug("Job not pgsc-calc, ignoring")
                     continue
@@ -63,17 +63,17 @@ def _get_job_status(job) -> tuple[str, str, str]:
     return uid, run_id, status
 
 
-def _update_jobs(producer, uid: str, run_id: str, status: str, known_jobs: dict[str, str]) -> dict[str, str]:
+def _update_jobs(producer, pipeline_id: str, run_id: str, status: str, known_jobs: dict[str, str]) -> dict[str, str]:
     if run_id in known_jobs:
         if known_jobs[run_id] == status:
             logger.info(f"Message already sent for job {run_id}")
             return known_jobs
         else:
             logger.info(f"Status change for job {run_id}")
-            _send_message(producer=producer, status=status, run_id=run_id, uid=uid)
+            _send_message(producer=producer, status=status, run_id=run_id, pipeline_id=pipeline_id)
     else:
         logger.info(f"New job found: {run_id}")
-        _send_message(producer=producer, status=status, run_id=run_id, uid=uid)
+        _send_message(producer=producer, status=status, run_id=run_id, pipeline_id=pipeline_id)
 
     return known_jobs | {run_id: status}
 
@@ -91,7 +91,7 @@ def _prune_jobs(known_jobs: dict[str, str], job_list) -> dict[str, str]:
     return known_jobs
 
 
-def _send_message(producer, status: str, run_id: str, uid: str) -> None:
-    message = {'status': status.upper(), 'uid': uid, 'outdir': ""}
+def _send_message(producer, status: str, run_id: str, pipeline_id: str) -> None:
+    message = {'status': status.upper(), 'pipelineId': pipeline_id, 'outdir': ""}
     logger.debug(f"Sending message for job {run_id}: {message}")
     producer.send('pipeline-status', message)
