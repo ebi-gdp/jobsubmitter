@@ -3,6 +3,7 @@ import logging
 
 from hikaru.model.rel_1_21 import *
 
+from jobsubmitter import config
 from jobsubmitter.job.base_manifests import base_job
 from jobsubmitter.job.config import make_cm_vol, adopt_object
 
@@ -12,7 +13,7 @@ logging.getLogger('kubernetes').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-def submit_job(params, client_id, ns) -> None:
+def submit_job(params, client_id) -> None:
     """ Create the Job object and set the ConfigMap parent """
     cm: ConfigMap
     job: Job
@@ -24,27 +25,27 @@ def submit_job(params, client_id, ns) -> None:
     volume, init_containers = build_init_containers(transfer_cm.metadata.name)
 
     # create configmap for main job, and add the transfer volume
-    cm, job = _populate_job_instance(params['pipeline_param'], client_id, ns, volume)
+    cm, job = _populate_job_instance(params['pipeline_param'], client_id, volume)
     job.spec.template.spec.initContainers = init_containers
 
 
-    job.create(namespace=ns)
+    job.create(namespace=config.NAMESPACE)
     logger.debug(f"Submitted job {job.metadata.name} to K8S")
 
     # set job as owner of auxiliary objects (configmap / pvc)
     # when job dies, these objects must die too
-    pvc = PersistentVolumeClaim().read(name=volume.persistentVolumeClaim.claimName, namespace=ns)
+    pvc = PersistentVolumeClaim().read(name=volume.persistentVolumeClaim.claimName, namespace=config.NAMESPACE)
     [adopt_object(job, x) for x in [cm, transfer_cm, pvc]]
 
 
-def _make_transfer_cm(params: dict, local_dest: str = '/home/globus-client/data') -> ConfigMap:
+def _make_transfer_cm(params: dict) -> ConfigMap:
     """ The transfer config map sets the globus source endpoint ID and the local destination
 
     - The local destination must be the mountPath of the attached PVC
     - local_dest must have read / write permissions for the globus-client user
     - the volume-mount-hack initContainer fixes PVC permissions
     """
-    meta = ObjectMeta(namespace="intervene-dev", generateName="transfer-", labels={'app': 'transfer'})
+    meta = ObjectMeta(namespace=config.NAMESPACE, generateName="transfer-", labels={'app': 'transfer'})
     d = {'GLOBUS_GUEST_COLLECTION_ID': params['globus_details']['guest_collection_id'],
          'GLOBUS_BASE_URL': 'https://g-1504d5.dd271.03c0.data.globus.org',
          'JOB_MESSAGE': json.dumps(params)}
@@ -53,12 +54,12 @@ def _make_transfer_cm(params: dict, local_dest: str = '/home/globus-client/data'
     cm.create()
     return cm
 
-def _populate_job_instance(params: dict, client_id: str, ns: str, pvc_vol: Volume) -> tuple[ConfigMap, Job]:
+def _populate_job_instance(params: dict, client_id: str,pvc_vol: Volume) -> tuple[ConfigMap, Job]:
     """ Populate a loaded base job instance with parameters from Kafka """
     nxf_job: Job = base_job()
     cm: ConfigMap
     cm_vol: Volume
-    cm, cm_vol = make_cm_vol(params, client_id, ns, pvc_vol)
+    cm, cm_vol = make_cm_vol(params, client_id, pvc_vol)
     volumes = nxf_job.spec.template.spec.volumes
     # set up persistent data shared across transfer initContainer + job
     volumes[0] = pvc_vol

@@ -7,10 +7,10 @@ import hikaru
 from hikaru.model.rel_1_21 import *
 from ruamel.yaml import YAML
 
+from jobsubmitter import config
 from jobsubmitter.transfer import manifests
 
-from kubernetes import config
-from kubernetes.client import ApiClient
+import kubernetes
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def build_init_containers(config_map_name) -> tuple[Volume, list[Container]]:
 def _instantiate_pvc() -> PersistentVolumeClaim:
     logger.info("Making ReadWriteMany Persistent Volume Claim")
     # TODO: make namespace dynamic
-    meta = ObjectMeta(namespace="intervene-dev", generateName="transfer-", labels={'app': 'transfer'})
+    meta = ObjectMeta(namespace=config.NAMESPACE, generateName="transfer-", labels={'app': 'transfer'})
     pv = PersistentVolumeClaim()
     pv.metadata = meta
     pv_spec = PersistentVolumeClaimSpec()

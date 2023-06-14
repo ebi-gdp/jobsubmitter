@@ -2,7 +2,9 @@ import logging
 import argparse
 from threading import Thread
 
-from kubernetes import config
+import kubernetes
+
+from jobsubmitter import config
 from jobsubmitter.consume import create_consumer
 from jobsubmitter.job.job import submit_job
 from jobsubmitter.job.config import make_shared_cm
@@ -24,6 +26,7 @@ def parse_args(args=None) -> argparse.Namespace:
 
 def main(args=None):
     args = parse_args(args)
+    config.NAMESPACE = args.namespace
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,
@@ -38,11 +41,11 @@ def main(args=None):
     bootstrap_list = args.kafka_bootstrap_urls.strip().split(",")
 
     if args.local_config:
-        config.load_kube_config()
+        kubernetes.config.load_kube_config()
     else:
-        config.load_incluster_config()
+        kubernetes.config.load_incluster_config()
 
-    make_shared_cm(args.namespace)  # ensure the shared configmap is provisioned at startup
+    make_shared_cm()  # ensure the shared configmap is provisioned at startup
 
     watch_thread = Thread(target=job_watcher, kwargs={'bootstrap_servers': bootstrap_list}, daemon=True)
     watch_thread.start()
@@ -57,6 +60,7 @@ def main(args=None):
         logger.info("Ready and listening for job requests")
 
     for message in consumer:
+        make_shared_cm() # make sure cm is present
         assert watch_thread.is_alive()
         params = message.value
 
@@ -66,7 +70,7 @@ def main(args=None):
         else:
             logging.info(message)
 
-        submit_job(params, args.client_id, args.namespace)
+        submit_job(params, args.client_id)
 
 
 if __name__ == '__main__':

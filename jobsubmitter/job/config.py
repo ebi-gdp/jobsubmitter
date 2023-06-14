@@ -5,6 +5,7 @@ import os
 from kubernetes import client
 from hikaru.model.rel_1_21 import *
 
+from jobsubmitter import config
 from jobsubmitter.job.base_manifests import base_executor, base_configmap
 from jobsubmitter.job.nextflowconfigfile import NextflowConfigFile
 
@@ -14,15 +15,14 @@ logger = logging.getLogger(__name__)
 
 def make_cm_vol(params: dict[str, dict],
                 client_id: str,
-                ns: str,
                 pvc_vol: Volume) -> tuple[ConfigMap, Volume]:
     """ Create a volume from parameter and executor ConfigMaps """
-    cm = _make_parameter_cm(params, client_id, ns)
-    result: Response = cm.createNamespacedConfigMap(namespace=ns)
+    cm = _make_parameter_cm(params, client_id)
+    result: Response = cm.createNamespacedConfigMap(namespace=config.NAMESPACE)
     cm.metadata.name = result.obj.metadata.name  # update name metadata with generated name
 
     logger.debug("Merging k8s execution configuration and updating")
-    cm.merge(_make_executor_cm(ns, pvc_vol))
+    cm.merge(_make_executor_cm(pvc_vol))
     cm.immutable = True
     cm.update()
 
@@ -42,19 +42,19 @@ def adopt_object(job: Job, object) -> None:
     object.update()
 
 
-def make_shared_cm(ns: str) -> None:
+def make_shared_cm() -> None:
     """ Ensure the shared ConfigMap is provisioned in the namespace
 
     The ConfigMap describes environment variables shared across all job instances """
     try:
         cm: ConfigMap = base_configmap()
-        cm.update(namespace=ns)  # always synchronise shared configmap
+        cm.update(namespace=config.NAMESPACE)  # always synchronise shared configmap
     except client.exceptions.ApiException:
         logger.debug("Creating base configmaps")
-        cm.create(namespace=ns)
+        cm.create(namespace=config.NAMESPACE)
 
 
-def _make_cm_meta(client_id: str, params: dict[str, str], ns: str) -> ObjectMeta:
+def _make_cm_meta(client_id: str, params: dict[str, str]) -> ObjectMeta:
     """ Create a metadata object for the ConfigMap """
     labels: dict = {'app': 'nextflow',
                     'submitter': client_id,
@@ -62,11 +62,11 @@ def _make_cm_meta(client_id: str, params: dict[str, str], ns: str) -> ObjectMeta
                     'cm_type': 'volume'}
 
     return ObjectMeta(labels=labels,
-                      namespace=ns,
+                      namespace=config.NAMESPACE,
                       generateName='nxf-vol-')
 
 
-def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
+def _make_parameter_cm(params, client_id) -> ConfigMap:
     """ Create a parameter ConfigMap, unique to each pipeline run instance.
 
      The created ConfigMap desribes _what_ the nextflow pipeline will execute.
@@ -92,11 +92,11 @@ def _make_parameter_cm(params, client_id, ns) -> ConfigMap:
 
     file_dict: dict[str, str] = {'input.json': json.dumps(target_genomes),
                                  'params.json': json.dumps(nxf_params)}
-    meta = _make_cm_meta(client_id, params, ns)
+    meta = _make_cm_meta(client_id, params)
     return ConfigMap(data=file_dict, metadata=meta, immutable=False)
 
 
-def _make_executor_cm(ns: str, pvc_vol: Volume) -> ConfigMap:
+def _make_executor_cm(pvc_vol: Volume) -> ConfigMap:
     """ Create an executor ConfigMap, unique to each pipeline run instance.
 
      The created ConfigMap describes _how_ the pipeline will execute.
@@ -106,7 +106,7 @@ def _make_executor_cm(ns: str, pvc_vol: Volume) -> ConfigMap:
          - What PVC to use for work
      """
     execution_params = {'k8s.storageClaimName': f"'{pvc_vol.persistentVolumeClaim.claimName}'",
-                        'k8s.namespace': f"'{ns}'" }
+                        'k8s.namespace': f"'{config.NAMESPACE}'" }
     cm: ConfigMap = base_executor()
     configfile: NextflowConfigFile = NextflowConfigFile(cm.data['k8s.config'])
     cm.data['k8s.config'] = configfile.update(execution_params).data
