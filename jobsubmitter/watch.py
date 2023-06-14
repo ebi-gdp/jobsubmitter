@@ -6,6 +6,8 @@ import logging
 from kafka import KafkaProducer
 from kubernetes import client
 
+from jobsubmitter import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +27,7 @@ def job_watcher(bootstrap_servers):
 
     while True:
         logger.info("Getting list of jobs")
-        jobs = api_client.list_namespaced_job('intervene-dev')
+        jobs = api_client.list_namespaced_job(config.NAMESPACE)
 
         if len(jobs.items) == 0:
             logger.debug("Found no jobs in job list, sleeping 1 minute")

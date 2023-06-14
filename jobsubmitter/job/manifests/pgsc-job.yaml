@@ -16,7 +16,7 @@ spec:
       serviceAccountName: nextflow-job
       containers:
         - args:
-            - nextflow run  https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.0 -c /config/s3.config -c /config/k8s.config --input /config/input.json
+            - nextflow run  https://gitlab.ebi.ac.uk/gdp-public/pgsc_calc.git -r v1.3.2 -c /config/s3.config -c /config/k8s.config --input /config/input.json --min_overlap 0.01
           command:
             - /bin/sh
             - '-c'

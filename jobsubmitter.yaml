@@ -16,7 +16,7 @@ spec:
       serviceAccountName: jobsubmitter      
       containers:
         - name: js
-          image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter:0.1.0
+          image: dockerhub.ebi.ac.uk/gdp-public/jobsubmitter:0.2.0
           imagePullPolicy: Always
           command: ["submit_job"]
           args: ["--kafka_bootstrap_urls", "kafka-cluster-kafka-bootstrap.kafka-dev.svc.cluster.local:9092",
