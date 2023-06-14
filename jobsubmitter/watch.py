@@ -94,6 +94,6 @@ def _prune_jobs(known_jobs: dict[str, str], job_list) -> dict[str, str]:
 
 
 def _send_message(producer, status: str, run_id: str, pipeline_id: str) -> None:
-    message = {'status': status.upper(), 'pipelineId': pipeline_id, 'outdir': ""}
+    message = {'status': status.upper(), 'pipeline_id': pipeline_id, 'outdir': ""}
     logger.debug(f"Sending message for job {run_id}: {message}")
     producer.send('pipeline-status', message)
