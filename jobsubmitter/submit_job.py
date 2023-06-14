@@ -19,6 +19,7 @@ def parse_args(args=None) -> argparse.Namespace:
     parser.add_argument("--kafka_bootstrap_urls", help="Path to kafka bootstrap server",required=True)
     parser.add_argument("--client_id", help="Unique identifier of this client",required=True)
     parser.add_argument("--namespace", help="Namespace of provisioned jobs", required=True)
+    parser.add_argument("--output_bucket", help="s3 root URL of output bucket", required=True)
     parser.add_argument("--local_config", help="Use local KUBECONFIG", action='store_true')
     parser.add_argument("--verbose", help="Chattier logs", action='store_true')
     return parser.parse_args(args)
@@ -27,6 +28,7 @@ def parse_args(args=None) -> argparse.Namespace:
 def main(args=None):
     args = parse_args(args)
     config.NAMESPACE = args.namespace
+    config.OUTPUT_BUCKET = args.output_bucket
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,
