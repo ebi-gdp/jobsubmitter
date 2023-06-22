@@ -46,8 +46,9 @@ def _make_transfer_cm(params: dict) -> ConfigMap:
     - the volume-mount-hack initContainer fixes PVC permissions
     """
     meta = ObjectMeta(namespace=config.NAMESPACE, generateName="transfer-", labels={'app': 'transfer'})
+    globus_base_url = "https://g-1504d5.dd271.03c0.data.globus.org" if config.NAMESPACE == "dev" else "https://g-8b9225.dd271.03c0.data.globus.org"
     d = {'GLOBUS_GUEST_COLLECTION_ID': params['globus_details']['guest_collection_id'],
-         'GLOBUS_BASE_URL': 'https://g-1504d5.dd271.03c0.data.globus.org',
+         'GLOBUS_BASE_URL': globus_base_url,
          'JOB_MESSAGE': json.dumps(params)}
     cm = ConfigMap(immutable=True, metadata=meta, data=d)
     logger.info(f"Creating transfer configmap: {d}")
