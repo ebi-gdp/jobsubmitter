@@ -1,3 +1,12 @@
+## 2024-04-12 deprecation
+
+This job submitter was superseded by [hattivatti](https://github.com/ebi-gdp/hattivatti) because:
+
+* We decided not to run compute jobs using the Kubernetes executor anymore
+* A lot of the complicated things the job submitter did with PVCs was deprecated by adopting the Fusion filesystem 🎉
+* Making K8S objects in python is quite complex, so it was replaced with a Helm chart
+* Needed to support more multiple executors (e.g. google batch, slurm, anything else in the future)
+
 # Job submitter
 
 `jobsubmitter` is part of the INTERVENE platform backend. `jobsubmitter` is a python service that:
